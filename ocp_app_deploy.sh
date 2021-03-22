@@ -328,7 +328,7 @@ EOF
         else
           # create OpenShift route
 cat > test-route.json << EOF
-{"kind":"Route","apiVersion":"route.openshift.io/v1","metadata":{"annotations":{"haproxy.router.openshift.io/timeout":"4m","openshift.io/host.generated":"true","template.openshift.io/expose-uri":"http://{.spec.host}{.spec.path}"},"name":"pythonflaskfelix","namespace":"default","labels":{"app":"pythonflaskfelix"}},"spec":{"to":{"kind":"Service","name":"pythonflaskfelix"},"tls":{"termination":"edge","insecureEdgeTerminationPolicy":"Redirect"},"wildcardPolicy":"None"}}
+{"kind":"Route","apiVersion":"route.openshift.io/v1","metadata":{"annotations":{"haproxy.router.openshift.io/timeout":"4m","openshift.io/host.generated":"true","template.openshift.io/expose-uri":"http://{.spec.host}{.spec.path}"},"name":"${APP_SERVICE}","namespace":"${CLUSTER_NAMESPACE}","labels":{"app":"${APP_SERVICE}"}},"spec":{"to":{"kind":"Service","name":"${APP_SERVICE}"},"tls":{"termination":"edge","insecureEdgeTerminationPolicy":"Redirect"},"wildcardPolicy":"None"}}
 EOF
 #{"apiVersion":"route.openshift.io/v1","kind":"Route","metadata":{"name":"${APP_SERVICE}"},"spec":{"to":{"kind":"Service","name":"${APP_SERVICE}"}, "tls":{"termination":"edge", "insecureEdgeTerminationPolicy":"Redirect"}}}
           echo ""
@@ -345,7 +345,7 @@ EOF
       fi
     #fi
     routerCanonicalHostname=$(kubectl get -n openshift-ingress routes -o jsonpath='{.items[0].status.ingress[0].routerCanonicalHostname}')
-    export APP_URL=https://${APP_SERVICE}-default.${routerCanonicalHostname} # using 'export', the env var gets passed to next job in stage
+    export APP_URL=https://${APP_SERVICE}-${CLUSTER_NAMESPACE}.${routerCanonicalHostname} # using 'export', the env var gets passed to next job in stage
     echo -e "VIEW THE APPLICATION AT: ${APP_URL}"
   fi
 fi
