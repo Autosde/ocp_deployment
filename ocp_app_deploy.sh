@@ -309,9 +309,10 @@ else
     else
    PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
     fi
-    if [ -z "${KUBERNETES_MASTER_ADDRESS}" ]; then
-      echo "Using first worker node ip address as NodeIP: ${IP_ADDR}"
-    else
+    #if [ -z "${KUBERNETES_MASTER_ADDRESS}" ]; then
+    #  echo "Using first worker node ip address as NodeIP: ${IP_ADDR}"
+    #else
+    
       # check if a route resource exists in the this kubernetes cluster
       if kubectl explain route > /dev/null 2>&1; then
         # Assuming the kubernetes target cluster is an openshift cluster
@@ -321,8 +322,9 @@ else
         else
           # create OpenShift route
 cat > test-route.json << EOF
-{"apiVersion":"route.openshift.io/v1","kind":"Route","metadata":{"name":"${APP_SERVICE}"},"spec":{"to":{"kind":"Service","name":"${APP_SERVICE}"}, "tls":{"termination":"edge", "insecureEdgeTerminationPolicy":"Redirect"}}}
+{"kind":"Route","apiVersion":"route.openshift.io/v1","metadata":{"annotations":{"haproxy.router.openshift.io/timeout":"4m","openshift.io/host.generated":"true","template.openshift.io/expose-uri":"http://{.spec.host}{.spec.path}"},"name":"pythonflaskfelix","namespace":"default","labels":{"app":"pythonflaskfelix"}},"spec":{"to":{"kind":"Service","name":"pythonflaskfelix"},"tls":{"termination":"edge","insecureEdgeTerminationPolicy":"Redirect"},"wildcardPolicy":"None"}}
 EOF
+#{"apiVersion":"route.openshift.io/v1","kind":"Route","metadata":{"name":"${APP_SERVICE}"},"spec":{"to":{"kind":"Service","name":"${APP_SERVICE}"}, "tls":{"termination":"edge", "insecureEdgeTerminationPolicy":"Redirect"}}}
           echo ""
           cat test-route.json
           kubectl apply -f test-route.json --validate=false --namespace ${CLUSTER_NAMESPACE}
@@ -335,8 +337,9 @@ EOF
         # Use the KUBERNETES_MASTER_ADRESS
         IP_ADDR=${KUBERNETES_MASTER_ADDRESS}
       fi
-    fi
-    export APP_URL=http://${IP_ADDR}:${PORT} # using 'export', the env var gets passed to next job in stage
+    #fi
+    routerCanonicalHostname=$(kubectl get -n openshift-ingress routes -o jsonpath='{.items[0].status.ingress[0].routerCanonicalHostname}')
+    export APP_URL=https://${APP_SERVICE}.${routerCanonicalHostname} # using 'export', the env var gets passed to next job in stage
     echo -e "VIEW THE APPLICATION AT: ${APP_URL}"
   fi
 fi
