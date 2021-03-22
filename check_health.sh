@@ -46,8 +46,8 @@ LIVENESS_PROBE_PATH=$(echo $CONTAINERS_JSON | jq -r ".livenessProbe.httpGet.path
 echo ".$LIVENESS_PROBE_PATH."
 # LIVENESS_PROBE_PORT=$(echo $CONTAINERS_JSON | jq -r ".livenessProbe.httpGet.port" | head -n 1)
 if [ ${LIVENESS_PROBE_PATH} != null ]; then
-  LIVENESS_PROBE_URL=${APP_URL}
-  #LIVENESS_PROBE_URL=${APP_URL}${LIVENESS_PROBE_PATH}
+  #LIVENESS_PROBE_URL=${APP_URL}
+  LIVENESS_PROBE_URL=${APP_URL}${LIVENESS_PROBE_PATH}
   if [ "$(curl -is ${LIVENESS_PROBE_URL} --connect-timeout 3 --max-time 5 --retry 2 --retry-max-time 30 | head -n 1 | grep 200)" != "" ]; then
     echo "Successfully reached liveness probe endpoint: ${LIVENESS_PROBE_URL}"
     echo "====================================================================="
