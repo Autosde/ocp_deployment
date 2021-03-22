@@ -295,7 +295,7 @@ else
   if [ ! -z "${APP_SERVICE}" ]; then
     CLUSTER_IP=$(kubectl get services -o jsonpath="{.items[?(@.metadata.name=='"${APP_SERVICE}"')].spec.clusterIP}")
     echo "ClusterIP: ${CLUSTER_IP}"
-    kubectl patch svc "${APP_SERVICE}" --type='json' -p '[{"op":"replace","path":"/spec","value":{"ports":[{"name":"http","protocol":"TCP","port":3000,"targetPort":3000,}],"selector":{"app":"pythonflaskfelix"},"type":"ClusterIP","clusterIP": null,"sessionAffinity":"None","externalTrafficPolicy":"Cluster"}}]'
+    kubectl patch svc "${APP_SERVICE}" --type='json' -p '[{"op":"replace","path":"/spec","value":{"ports":[{"name":"http","protocol":"TCP","port":3000,"targetPort":3000,}],"selector":{"app":"pythonflaskfelix"},"type":"ClusterIP","clusterIP": "None","sessionAffinity":"None","externalTrafficPolicy":"Cluster"}}]'
     echo -e "SERVICE: ${APP_SERVICE}"
     echo "DEPLOYED SERVICES:"
     kubectl describe services ${APP_SERVICE} --namespace ${CLUSTER_NAMESPACE}
