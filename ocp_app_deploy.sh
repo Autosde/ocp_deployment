@@ -293,7 +293,7 @@ else
     APP_SERVICE=$(kubectl get services --namespace ${CLUSTER_NAMESPACE} -o json | jq -r ' .items[] | select (.spec.selector.app=="'"${APP_NAME}"'") | .metadata.name ')
   fi
   if [ ! -z "${APP_SERVICE}" ]; then
-    kubectl patch svc ${APP_SERVICE}" -p '{"spec":{"type":"ClusterIP"}}'
+    kubectl patch svc "${APP_SERVICE}" -p '{"spec":{"type":"ClusterIP"}}'
     echo -e "SERVICE: ${APP_SERVICE}"
     echo "DEPLOYED SERVICES:"
     kubectl describe services ${APP_SERVICE} --namespace ${CLUSTER_NAMESPACE}
