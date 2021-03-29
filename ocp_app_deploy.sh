@@ -296,9 +296,9 @@ else
     CLUSTER_IP=$(kubectl get services -o jsonpath="{.items[?(@.metadata.name=='"${APP_SERVICE}"')].spec.clusterIP}")
     echo "ClusterIP: ${CLUSTER_IP}"
 cat > service_patch.json << EOF
-[{"op":"replace","path":"/spec","value":{"ports":[{"name":"http","protocol":"TCP","port":3000,"targetPort":3000,}],"selector":{"app":"pythonflaskfelix"},"type":"ClusterIP","clusterIP":"$CLUSTER_IP","sessionAffinity":"None"}}]
+[{"op":"replace","path":"/spec","value":{"ports":[{"name":"http","protocol":"TCP","port":3000,"targetPort":3000,}],"selector":{"app":"${APP_SERVICE}"},"type":"ClusterIP","clusterIP":"$CLUSTER_IP","sessionAffinity":"None"}}]
 EOF
-    kubectl patch svc pythonflaskfelix --type='json' --patch $(cat service_patch.json)
+    kubectl patch svc "${APP_SERVICE}" --type='json' --patch $(cat service_patch.json)
     echo -e "SERVICE: ${APP_SERVICE}"
     echo "DEPLOYED SERVICES:"
     kubectl describe services ${APP_SERVICE} --namespace ${CLUSTER_NAMESPACE}
