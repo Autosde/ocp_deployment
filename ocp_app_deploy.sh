@@ -350,8 +350,7 @@ EOF
       fi
     #fi
     routerCanonicalHostname=$(kubectl get -n openshift-ingress routes -o jsonpath='{.items[0].status.ingress[0].routerCanonicalHostname}')
-    export APP_URL=https://${APP_SERVICE}.${routerCanonicalHostname} # using 'export', the env var gets passed to next job in stage
-    #export APP_URL=https://${APP_SERVICE}-${CLUSTER_NAMESPACE}.${routerCanonicalHostname} # using 'export', the env var gets passed to next job in stage
+    export APP_URL=https://${APP_SERVICE}-${CLUSTER_NAMESPACE}.${routerCanonicalHostname} # using 'export', the env var gets passed to next job in stage
 
     echo -e "VIEW THE APPLICATION AT: ${APP_URL}"
   fi
