@@ -291,11 +291,12 @@ else
 
   # lookup service for current release
   APP_SERVICE=$(kubectl get services --namespace ${CLUSTER_NAMESPACE} -o json | jq -r ' .items[] | select (.spec.selector.release=="'"${RELEASE_NAME}"'") | .metadata.name ')
-  echo "APP_SERVICE: ${APP_SERVICE}"
+
   if [ -z "${APP_SERVICE}" ]; then
     # lookup service for current app
     APP_SERVICE=$(kubectl get services --namespace ${CLUSTER_NAMESPACE} -o json | jq -r ' .items[] | select (.spec.selector.app=="'"${APP_NAME}"'") | .metadata.name ')
   fi
+  echo "APP_SERVICE: ${APP_SERVICE}"
   if [ ! -z "${APP_SERVICE}" ]; then
     CLUSTER_IP=$(kubectl get services -o jsonpath="{.items[?(@.metadata.name=='"${APP_SERVICE}"')].spec.clusterIP}")
     echo "ClusterIP: ${CLUSTER_IP}"
