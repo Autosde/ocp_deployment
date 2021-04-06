@@ -339,38 +339,15 @@ spec:
     - hosts:
         - "${CHART_NAME}.${BASE_DOMAIN}"
       port:
-        name: http
-        number: 80
-        protocol: HTTP
+        name: https
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: PASSTHROUGH
   selector:
     istio: ingressgateway
 EOF
   fi
-
-
-  ROUTE=$(kubectl get route --namespace istio-system -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
-  if [ -z  "$ROUTE" ]; then
-      kubectl apply -n istio-system -f - <<EOF
-kind: Route
-apiVersion: route.openshift.io/v1
-metadata:
-  name: "${CHART_NAME}"
-spec:
-  host: "${CHART_NAME}.${BASE_DOMAIN}"
-  to:
-    kind: Service
-    name: istio-ingressgateway
-    weight: 100
-  port:
-    targetPort: http2
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: None
-  wildcardPolicy: None
-EOF
-  fi
-
-
 
     else
       PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
