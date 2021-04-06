@@ -303,8 +303,7 @@ else
 
       BASE_DOMAIN=`kubectl get dns -o jsonpath='{.items[0].spec.baseDomain}'`
 
-
-  VIRTUAL_SERVICE=$(kubectl get virtualservice --namespace ${CLUSTER_NAMESPACE} ${CHART_NAME})
+  VIRTUAL_SERVICE=$(kubectl get virtualservice --namespace ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
 
   if [ -z "$VIRTUAL_SERVICE" ]; then
       kubectl apply -f - <<EOF
@@ -328,7 +327,8 @@ spec:
 EOF
   fi
 
-  ROUTE=$(kubectl get route --namespace ${CLUSTER_NAMESPACE} ${CHART_NAME})
+  kubectl get route
+  ROUTE=$(kubectl get route --namespace ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
   if [ -z  "$ROUTE" ]; then
       kubectl apply -f - <<EOF
 kind: Route
