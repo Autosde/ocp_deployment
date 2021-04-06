@@ -302,6 +302,11 @@ else
       echo -e "*** istio gateway enabled ***"
 
       BASE_DOMAIN=`kubectl get dns -o jsonpath='{.items[0].spec.baseDomain}'`
+
+
+  VIRTUAL_SERVICE=$(kubectl get virtualservice --namespace ${CLUSTER_NAMESPACE} ${CHART_NAME})
+
+  if [ -z "$VIRTUAL_SERVICE" ]; then
       kubectl apply -f - <<EOF
 kind: VirtualService
 apiVersion: networking.istio.io/v1alpha3
@@ -321,7 +326,10 @@ spec:
             port:
               number: 3000
 EOF
+  fi
 
+  ROUTE=$(kubectl get route --namespace ${CLUSTER_NAMESPACE} ${CHART_NAME})
+  if [ -z  "$ROUTE" ]; then
       kubectl apply -f - <<EOF
 kind: Route
 apiVersion: route.openshift.io/v1
@@ -340,6 +348,7 @@ spec:
     insecureEdgeTerminationPolicy: None
   wildcardPolicy: None
 EOF
+  fi
 
     else
       PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
