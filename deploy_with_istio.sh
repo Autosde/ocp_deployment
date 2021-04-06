@@ -328,7 +328,7 @@ EOF
   fi
 
   kubectl get route
-  ROUTE=$(kubectl get route --namespace ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
+  ROUTE=$(kubectl get route --namespace istio-system -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
   if [ -z  "$ROUTE" ]; then
       kubectl apply -f - <<EOF
 kind: Route
