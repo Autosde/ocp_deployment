@@ -301,7 +301,7 @@ else
       PORT=$( kubectl get svc istio-ingressgateway -n istio-system -o json | jq -r '.spec.ports[] | select (.name=="http2") | .nodePort ' )
       echo -e "*** istio gateway enabled ***"
 
-      BASE_DOMAIN=`kubectl.exe get dns -o jsonpath='{.items[0].spec.baseDomain}'`
+      BASE_DOMAIN=`kubectl get dns -o jsonpath='{.items[0].spec.baseDomain}'`
       kubectl apply -f <<EOF
 kind: VirtualService
 apiVersion: networking.istio.io/v1alpha3
