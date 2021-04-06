@@ -333,7 +333,7 @@ EOF
 kind: Gateway
 apiVersion: networking.istio.io/v1alpha3
 metadata:
-  name: "{{  .Chart.Name }}"
+  name: "${CHART_NAME}"
 spec:
   servers:
     - hosts:
