@@ -314,7 +314,7 @@ metadata:
   namespace: prod
 spec:
   hosts:
-    - "${CHART_NAME}.{$BASE_DOMAIN}"
+    - "${CHART_NAME}.${BASE_DOMAIN}"
   http:
     - match:
         - uri:
@@ -336,7 +336,7 @@ apiVersion: route.openshift.io/v1
 metadata:
   name: "${CHART_NAME}"
 spec:
-  host: "${CHART_NAME}.{$BASE_DOMAIN}"
+  host: "${CHART_NAME}.${BASE_DOMAIN}"
   to:
     kind: Service
     name: istio-ingressgateway
