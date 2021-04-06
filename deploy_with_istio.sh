@@ -329,7 +329,7 @@ EOF
 
   GATEWAY=$(kubectl get gateway --namespace  ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
   if [ -z  "$GATEWAY" ]; then
-      kubectl apply -n istio-system -f - <<EOF
+      kubectl apply -n ${CLUSTER_NAMESPACE} -f - <<EOF
 kind: Gateway
 apiVersion: networking.istio.io/v1alpha3
 metadata:
