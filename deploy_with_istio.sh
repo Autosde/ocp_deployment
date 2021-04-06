@@ -327,7 +327,27 @@ spec:
 EOF
   fi
 
-  kubectl get route
+  GATEWAY=$(kubectl get gateway --namespace  ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
+  if [ -z  "$GATEWAY" ]; then
+      kubectl apply -n istio-system -f - <<EOF
+kind: Gateway
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: "{{  .Chart.Name }}"
+spec:
+  servers:
+    - hosts:
+        - "${CHART_NAME}.${BASE_DOMAIN}"
+      port:
+        name: http
+        number: 80
+        protocol: HTTP
+  selector:
+    istio: ingressgateway
+EOF
+  fi
+
+
   ROUTE=$(kubectl get route --namespace istio-system -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
   if [ -z  "$ROUTE" ]; then
       kubectl apply -n istio-system -f - <<EOF
@@ -349,6 +369,8 @@ spec:
   wildcardPolicy: None
 EOF
   fi
+
+
 
     else
       PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
