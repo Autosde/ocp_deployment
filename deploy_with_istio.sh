@@ -302,7 +302,7 @@ else
       echo -e "*** istio gateway enabled ***"
 
       BASE_DOMAIN=`kubectl get dns -o jsonpath='{.items[0].spec.baseDomain}'`
-      kubectl apply -f <<EOF
+      kubectl apply -f - <<EOF
 kind: VirtualService
 apiVersion: networking.istio.io/v1alpha3
 metadata:
@@ -322,7 +322,7 @@ spec:
               number: 3000
 EOF
 
-      kubectl apply -f <<EOF
+      kubectl apply -f - <<EOF
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
