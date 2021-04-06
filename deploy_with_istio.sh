@@ -14,6 +14,8 @@
 # image registry (using an IBM Cloud API Key), perform a Helm deploy of container image using Helm 3 and check on outcome.
 
 # Input env variables (can be received via a pipeline environment properties.file.
+env
+
 echo "IMAGE_NAME=${IMAGE_NAME}"
 echo "IMAGE_TAG=${IMAGE_TAG}"
 echo "CHART_ROOT=${CHART_ROOT}"
@@ -31,12 +33,12 @@ echo "KUBERNETES_MASTER_PORT=${KUBERNETES_MASTER_PORT}"
 echo "KUBERNETES_SERVICE_ACCOUNT_TOKEN=${KUBERNETES_SERVICE_ACCOUNT_TOKEN}"
 
 # View build properties
-if [ -f build.properties ]; then 
+if [ -f build.properties ]; then
   echo "build.properties:"
   cat build.properties | grep -v -i password
-else 
+else
   echo "build.properties : not found"
-fi 
+fi
 # also run 'env' command to find all available env variables
 # or learn more about the available environment variables at:
 # https://cloud.ibm.com/docs/services/ContinuousDelivery/pipeline_deploy_var.html#deliverypipeline_environment
@@ -130,7 +132,7 @@ if [ -z "${CHART_PULL_SECRET}" ]; then
   if ! echo ${SERVICE_ACCOUNT} | jq -e '. | has("imagePullSecrets")' > /dev/null ; then
     kubectl patch --namespace ${CLUSTER_NAMESPACE} serviceaccount/default -p '{"imagePullSecrets":[{"name":"'"${IMAGE_PULL_SECRET_NAME}"'"}]}'
   else
-    if echo ${SERVICE_ACCOUNT} | jq -e '.imagePullSecrets[] | select(.name=="'"${IMAGE_PULL_SECRET_NAME}"'")' > /dev/null ; then 
+    if echo ${SERVICE_ACCOUNT} | jq -e '.imagePullSecrets[] | select(.name=="'"${IMAGE_PULL_SECRET_NAME}"'")' > /dev/null ; then
       echo -e "Pull secret already found in ${KUBERNETES_SERVICE_ACCOUNT_NAME} serviceAccount"
     else
       echo "Inserting toolchain pull secret into ${KUBERNETES_SERVICE_ACCOUNT_NAME} serviceAccount"
@@ -139,7 +141,7 @@ if [ -z "${CHART_PULL_SECRET}" ]; then
   fi
   echo "${KUBERNETES_SERVICE_ACCOUNT_NAME} serviceAccount:"
   kubectl get serviceaccount ${KUBERNETES_SERVICE_ACCOUNT_NAME} --namespace ${CLUSTER_NAMESPACE} -o yaml
-  echo -e "Namespace ${CLUSTER_NAMESPACE} authorizing with private image registry using patched ${KUBERNETES_SERVICE_ACCOUNT_NAME} serviceAccount"  
+  echo -e "Namespace ${CLUSTER_NAMESPACE} authorizing with private image registry using patched ${KUBERNETES_SERVICE_ACCOUNT_NAME} serviceAccount"
 else
   echo -e "Namespace ${CLUSTER_NAMESPACE} authorized with private image registry using Helm chart imagePullSecret"
 fi
@@ -151,7 +153,7 @@ LOCAL_VERSION=$( helm version ${HELM_TLS_OPTION} --template="{{ .Version }}" | c
 # if no Helm 3 locally installed, LOCAL_VERSION will be empty -- will install latest then
 set -e
 if [ -z "${HELM_VERSION}" ]; then
-  CLIENT_VERSION=${LOCAL_VERSION} 
+  CLIENT_VERSION=${LOCAL_VERSION}
 else
   CLIENT_VERSION=${HELM_VERSION}
 fi
@@ -207,7 +209,7 @@ helm upgrade ${RELEASE_NAME} ${CHART_PATH} ${HELM_TLS_OPTION} --install --set im
 
 echo "=========================================================="
 echo -e "CHECKING deployment status of release ${RELEASE_NAME} with image tag: ${IMAGE_TAG}"
-# Extract name from actual Kube deployment resource owning the deployed container image 
+# Extract name from actual Kube deployment resource owning the deployed container image
 DEPLOYMENT_NAME=$( helm get manifest ${HELM_TLS_OPTION} ${RELEASE_NAME} --namespace ${CLUSTER_NAMESPACE} | yq read -d'*' --tojson - | jq -r | jq -r --arg image "$IMAGE_REPOSITORY:$IMAGE_TAG" '.[] | select (.kind=="Deployment") | . as $adeployment | .spec?.template?.spec?.containers[]? | select (.image==$image) | $adeployment.metadata.name' )
 if [ -z "$DEPLOYMENT_NAME" ]; then
   echo "NO DEPLOYMENT found in the helm release ${RELEASE_NAME}. Skipping kubectl rollout status"
@@ -232,7 +234,7 @@ kubectl get events --sort-by=.metadata.creationTimestamp -n ${CLUSTER_NAMESPACE}
 if jq -e '.services[] | select(.service_id=="draservicebroker")' _toolchain.json > /dev/null 2>&1; then
   if [ -z "${KUBERNETES_MASTER_ADDRESS}" ]; then
     DEPLOYMENT_ENVIRONMENT="${PIPELINE_KUBERNETES_CLUSTER_NAME}:${CLUSTER_NAMESPACE}"
-  else 
+  else
     DEPLOYMENT_ENVIRONMENT="${KUBERNETES_MASTER_ADDRESS}:${CLUSTER_NAMESPACE}"
   fi
   ibmcloud doi publishdeployrecord --env $DEPLOYMENT_ENVIRONMENT \
@@ -298,17 +300,58 @@ else
     if [ "${USE_ISTIO_GATEWAY}" = true ]; then
       PORT=$( kubectl get svc istio-ingressgateway -n istio-system -o json | jq -r '.spec.ports[] | select (.name=="http2") | .nodePort ' )
       echo -e "*** istio gateway enabled ***"
+
+      BASE_DOMAIN=`kubectl.exe get dns -o jsonpath='{.items[0].spec.baseDomain}'`
+      kubectl apply -f <<EOF
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: "${CHART_NAME}"
+  namespace: prod
+spec:
+  hosts:
+    - "${CHART_NAME}.{$BASE_DOMAIN}"
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: "${CHART_NAME}"
+            port:
+              number: 3000
+EOF
+
+      kubectl apply -f <<EOF
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: "${CHART_NAME}"
+spec:
+  host: "${CHART_NAME}.{$BASE_DOMAIN}"
+  to:
+    kind: Service
+    name: istio-ingressgateway
+    weight: 100
+  port:
+    targetPort: http2
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: None
+  wildcardPolicy: None
+EOF
+
     else
       PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
     fi
     if [ -z "${KUBERNETES_MASTER_ADDRESS}" ]; then
       echo "Using first worker node ip address as NodeIP: ${IP_ADDR}"
-    else 
+    else
       # check if a route resource exists in the this kubernetes cluster
       if kubectl explain route > /dev/null 2>&1; then
         # Assuming the kubernetes target cluster is an openshift cluster
         # Check if a route exists for exposing the service ${APP_SERVICE}
-        if  kubectl get routes --namespace ${CLUSTER_NAMESPACE} -o json | jq --arg service "$APP_SERVICE" -e '.items[] | select(.spec.to.name==$service)'; then
+        if kubectl get routes --namespace ${CLUSTER_NAMESPACE} -o json | jq --arg service "$APP_SERVICE" -e '.items[] | select(.spec.to.name==$service)'; then
           echo "Existing route to expose service $APP_SERVICE"
         else
           # create OpenShift route
@@ -317,7 +360,7 @@ cat > test-route.json << EOF
 EOF
           echo ""
           cat test-route.json
-          kubectl apply -f test-route.json --validate=false --namespace ${CLUSTER_NAMESPACE}
+#          kubectl apply -f test-route.json --validate=false --namespace ${CLUSTER_NAMESPACE}
           kubectl get routes --namespace ${CLUSTER_NAMESPACE}
         fi
         echo "LOOKING for host in route exposing service $APP_SERVICE"
@@ -327,7 +370,7 @@ EOF
         # Use the KUBERNETES_MASTER_ADRESS
         IP_ADDR=${KUBERNETES_MASTER_ADDRESS}
       fi
-    fi  
+    fi
     export APP_URL=http://${IP_ADDR}:${PORT} # using 'export', the env var gets passed to next job in stage
     echo -e "VIEW THE APPLICATION AT: ${APP_URL}"
   fi
