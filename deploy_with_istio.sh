@@ -303,29 +303,7 @@ else
 
       BASE_DOMAIN=`kubectl get dns -o jsonpath='{.items[0].spec.baseDomain}'`
 
-  VIRTUAL_SERVICE=$(kubectl get virtualservice --namespace ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
 
-  if [ -z "$VIRTUAL_SERVICE" ]; then
-      kubectl apply -f - <<EOF
-kind: VirtualService
-apiVersion: networking.istio.io/v1alpha3
-metadata:
-  name: "${CHART_NAME}"
-  namespace: prod
-spec:
-  hosts:
-    - "${CHART_NAME}.${BASE_DOMAIN}"
-  http:
-    - match:
-        - uri:
-            prefix: /
-      route:
-        - destination:
-            host: "${CHART_NAME}"
-            port:
-              number: 3000
-EOF
-  fi
 
   GATEWAY=$(kubectl get gateway --namespace  ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
   if [ -z  "$GATEWAY" ]; then
@@ -348,6 +326,53 @@ spec:
     istio: ingressgateway
 EOF
   fi
+
+  VIRTUAL_SERVICE=$(kubectl get virtualservice --namespace ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
+  if [ -z "$VIRTUAL_SERVICE" ]; then
+      kubectl apply -f - <<EOF
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: "${CHART_NAME}"
+  namespace: prod
+spec:
+  hosts:
+    - "${CHART_NAME}.${BASE_DOMAIN}"
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: "${CHART_NAME}"
+            port:
+              number: 3000
+EOF
+  fi
+
+  OLD_ROUTE=$(kubectl get route --namespace istio-system -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
+  if [ -z "$OLD_ROUTE" ]; then
+      kubectl apply -f - <<EOF
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: "${CHART_NAME}"
+spec:
+  host: "${CHART_NAME}.${BASE_DOMAIN}"
+  to:
+    kind: Service
+    name: istio-ingressgateway
+    weight: 100
+  port:
+    targetPort: http2
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: None
+  wildcardPolicy: None
+EOF
+  fi
+
+
 
     else
       PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
