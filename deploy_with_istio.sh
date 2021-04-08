@@ -14,8 +14,6 @@
 # image registry (using an IBM Cloud API Key), perform a Helm deploy of container image using Helm 3 and check on outcome.
 
 # Input env variables (can be received via a pipeline environment properties.file.
-env
-
 echo "IMAGE_NAME=${IMAGE_NAME}"
 echo "IMAGE_TAG=${IMAGE_TAG}"
 echo "CHART_ROOT=${CHART_ROOT}"
@@ -201,7 +199,6 @@ IMAGE_PULL_SECRET_NAME="ibmcloud-toolchain-${PIPELINE_TOOLCHAIN_ID}-${REGISTRY_U
 
 # Using 'upgrade --install" for rolling updates.".
 echo -e "Dry run into: ${PIPELINE_KUBERNETES_CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
-echo "Run command: helm upgrade ${RELEASE_NAME} ${CHART_PATH} ${HELM_TLS_OPTION} --install --debug --dry-run --set image.repository=${IMAGE_REPOSITORY},image.tag=${IMAGE_TAG},image.pullSecret=${IMAGE_PULL_SECRET_NAME} ${HELM_UPGRADE_EXTRA_ARGS} --namespace ${CLUSTER_NAMESPACE}"
 helm upgrade ${RELEASE_NAME} ${CHART_PATH} ${HELM_TLS_OPTION} --install --debug --dry-run --set image.repository=${IMAGE_REPOSITORY},image.tag=${IMAGE_TAG},image.pullSecret=${IMAGE_PULL_SECRET_NAME} ${HELM_UPGRADE_EXTRA_ARGS} --namespace ${CLUSTER_NAMESPACE}
 
 echo -e "Deploying into: ${PIPELINE_KUBERNETES_CLUSTER_NAME}/${CLUSTER_NAMESPACE}."
@@ -218,7 +215,7 @@ else
   echo -e "CHECKING deployment rollout of ${DEPLOYMENT_NAME}"
   echo ""
   set -x
-  if kubectl rollout status deploy/${DEPLOYMENT_NAME} --watch=true --timeout=${ROLLOUT_TIMEOUT:-"300s"} --namespace ${CLUSTER_NAMESPACE}; then
+  if kubectl rollout status deploy/${DEPLOYMENT_NAME} --watch=true --timeout=${ROLLOUT_TIMEOUT:-"150s"} --namespace ${CLUSTER_NAMESPACE}; then
     STATUS="pass"
   else
     STATUS="fail"
@@ -291,42 +288,7 @@ else
     echo "DEPLOYED SERVICES:"
     kubectl describe services ${APP_SERVICE} --namespace ${CLUSTER_NAMESPACE}
   fi
-
-  echo ""
-  echo "=========================================================="
-  echo "DEPLOYMENT SUCCEEDED"
-  if [ ! -z "${APP_SERVICE}" ]; then
-    echo ""
-    if [ "${USE_ISTIO_GATEWAY}" = true ]; then
-      PORT=$( kubectl get svc istio-ingressgateway -n istio-system -o json | jq -r '.spec.ports[] | select (.name=="http2") | .nodePort ' )
-      echo -e "*** istio gateway enabled ***"
-
-      BASE_DOMAIN=`kubectl get dns -o jsonpath='{.items[0].spec.baseDomain}'`
-
-
-
-  GATEWAY=$(kubectl get gateway --namespace  ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
-  if [ -z  "$GATEWAY" ]; then
-      kubectl apply -n ${CLUSTER_NAMESPACE} -f - <<EOF
-kind: Gateway
-apiVersion: networking.istio.io/v1alpha3
-metadata:
-  name: "${CHART_NAME}"
-spec:
-  servers:
-    - hosts:
-        - "${CHART_NAME}.${BASE_DOMAIN}"
-      port:
-        name: https
-        number: 443
-        protocol: HTTPS
-      tls:
-        mode: PASSTHROUGH
-  selector:
-    istio: ingressgateway
-EOF
-  fi
-
+####################################
   VIRTUAL_SERVICE=$(kubectl get virtualservice --namespace ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
   if [ -z "$VIRTUAL_SERVICE" ]; then
       kubectl apply -f - <<EOF
@@ -349,10 +311,40 @@ spec:
               number: 3000
 EOF
   fi
+####################################
+  echo ""
+  echo "=========================================================="
+  echo "DEPLOYMENT SUCCEEDED"
+  if [ ! -z "${APP_SERVICE}" ]; then
+    echo ""
+    if [ "${USE_ISTIO_GATEWAY}" = true ]; then
+      PORT=$( kubectl get svc istio-ingressgateway -n istio-system -o json | jq -r '.spec.ports[] | select (.name=="http2") | .nodePort ' )
+      echo -e "*** istio gateway enabled ***"
+    else
+      PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
+    fi
+    if [ -z "${KUBERNETES_MASTER_ADDRESS}" ]; then
+      echo "Using first worker node ip address as NodeIP: ${IP_ADDR}"
+#    else
+#      # check if a route resource exists in the this kubernetes cluster
+#      if kubectl explain route > /dev/null 2>&1; then
+        # Assuming the kubernetes target cluster is an openshift cluster
+        # Check if a route exists for exposing the service ${APP_SERVICE}
+#        if  kubectl get routes --namespace ${CLUSTER_NAMESPACE} -o json | jq --arg service "$APP_SERVICE" -e '.items[] | select(.spec.to.name==$service)'; then
+#          echo "Existing route to expose service $APP_SERVICE"
+#        else
+          # create OpenShift route
+#
+# {"apiVersion":"route.openshift.io/v1","kind":"Route","metadata":{"name":"${APP_SERVICE}"},"spec":{"to":{"kind":"Service","name":"${APP_SERVICE}"}}}
+#EOF
+#          echo ""
+#          cat test-route.json
+#          kubectl apply -f test-route.json --validate=false --namespace ${CLUSTER_NAMESPACE}
+ #         kubectl get routes --namespace ${CLUSTER_NAMESPACE}
 
   OLD_ROUTE=$(kubectl get route --namespace istio-system -o jsonpath="{.items[?(@.metadata.name=='${CHART_NAME}')].metadata.name}")
-  if [ -z "$OLD_ROUTE" ]; then
-      kubectl apply -f - <<EOF
+        if [ -z "$OLD_ROUTE" ]; then
+          kubectl apply --namespace istio-system -f - <<EOF
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -371,31 +363,7 @@ spec:
   wildcardPolicy: None
 EOF
   fi
-
-
-
-    else
-      PORT=$( kubectl get services --namespace ${CLUSTER_NAMESPACE} | grep ${APP_SERVICE} | sed 's/.*:\([0-9]*\).*/\1/g' )
-    fi
-    if [ -z "${KUBERNETES_MASTER_ADDRESS}" ]; then
-      echo "Using first worker node ip address as NodeIP: ${IP_ADDR}"
-    else
-      # check if a route resource exists in the this kubernetes cluster
-      if kubectl explain route > /dev/null 2>&1; then
-        # Assuming the kubernetes target cluster is an openshift cluster
-        # Check if a route exists for exposing the service ${APP_SERVICE}
-        if kubectl get routes --namespace ${CLUSTER_NAMESPACE} -o json | jq --arg service "$APP_SERVICE" -e '.items[] | select(.spec.to.name==$service)'; then
-          echo "Existing route to expose service $APP_SERVICE"
-        else
-          # create OpenShift route
-cat > test-route.json << EOF
-{"apiVersion":"route.openshift.io/v1","kind":"Route","metadata":{"name":"${APP_SERVICE}"},"spec":{"to":{"kind":"Service","name":"${APP_SERVICE}"}}}
-EOF
-          echo ""
-          cat test-route.json
-#          kubectl apply -f test-route.json --validate=false --namespace ${CLUSTER_NAMESPACE}
-          kubectl get routes --namespace ${CLUSTER_NAMESPACE}
-        fi
+ #       fi
         echo "LOOKING for host in route exposing service $APP_SERVICE"
         IP_ADDR=$(kubectl get routes --namespace ${CLUSTER_NAMESPACE} -o json | jq --arg service "$APP_SERVICE" -r '.items[] | select(.spec.to.name==$service) | .status.ingress[0].host')
         PORT=80
