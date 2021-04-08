@@ -306,7 +306,7 @@ spec:
             prefix: /
       route:
         - destination:
-            host: "${CHART_NAME}"
+            host: "${CHART_NAME}.${BASE_DOMAIN}"
             port:
               number: 3000
 EOF
