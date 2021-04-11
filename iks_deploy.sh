@@ -73,7 +73,7 @@ fi
 echo "Check ability to create a kubernetes deployment in ${CLUSTER_NAMESPACE} using kubectl CLI"
 
 # Label the space before creating deployment
-kubectl label --overwrite namespace "${CLUSTER_NAMESPACE}" istio-injection=enabled
+#kubectl label --overwrite namespace "${CLUSTER_NAMESPACE}" istio-injection=enabled
 
 kubectl auth can-i create deployment --namespace ${CLUSTER_NAMESPACE}
 
@@ -118,6 +118,9 @@ else
   kubectl create namespace ${CLUSTER_NAMESPACE}
   echo -e "Namespace ${CLUSTER_NAMESPACE} created."
 fi
+# Label the space before creating deployment
+kubectl label --overwrite namespace "${CLUSTER_NAMESPACE}" istio-injection=enabled
+
 
 # Grant access to private image registry from namespace $CLUSTER_NAMESPACE
 # reference https://cloud.ibm.com/docs/containers/cs_cluster.html#bx_registry_other
