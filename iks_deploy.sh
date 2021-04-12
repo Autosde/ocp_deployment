@@ -13,9 +13,9 @@ set -x
 # This script checks the IBM Container Service cluster is ready, has a namespace configured with access to the private
 # image registry (using an IBM Cloud API Key), perform a Helm deploy of container image using Helm 3 and check on outcome.
 
-env
-echo -e `env`
-echo $ENV
+#env
+#echo -e `env`
+#echo $ENV
 
 # Input env variables (can be received via a pipeline environment properties.file.
 echo "IMAGE_NAME=${IMAGE_NAME}"
@@ -33,8 +33,10 @@ echo "Use for custom Kubernetes cluster target:"
 echo "KUBERNETES_MASTER_ADDRESS=${KUBERNETES_MASTER_ADDRESS}"
 echo "KUBERNETES_MASTER_PORT=${KUBERNETES_MASTER_PORT}"
 echo "KUBERNETES_SERVICE_ACCOUNT_TOKEN=${KUBERNETES_SERVICE_ACCOUNT_TOKEN}"
-#echo "NLB=${NLB}" # todo: instead of getting NLB from env, use imbcloud command.
-echo "APP_ENV=${APP_ENV}"
+#echo "APP_ENV=${APP_ENV}"
+
+# todo: move this to the chart values.yaml
+ISTIO_NAMESPACE=istio-system
 
 # View build properties
 if [ -f build.properties ]; then
@@ -71,9 +73,6 @@ fi
 # Use kubectl auth to check if the kubectl client configuration is appropriate
 # check if the current configuration can create a deployment in the target namespace
 echo "Check ability to create a kubernetes deployment in ${CLUSTER_NAMESPACE} using kubectl CLI"
-
-# Label the space before creating deployment
-#kubectl label --overwrite namespace "${CLUSTER_NAMESPACE}" istio-injection=enabled
 
 kubectl auth can-i create deployment --namespace ${CLUSTER_NAMESPACE}
 
@@ -118,9 +117,9 @@ else
   kubectl create namespace ${CLUSTER_NAMESPACE}
   echo -e "Namespace ${CLUSTER_NAMESPACE} created."
 fi
+
 # Label the space before creating deployment
 kubectl label --overwrite namespace "${CLUSTER_NAMESPACE}" istio-injection=enabled
-
 
 # Grant access to private image registry from namespace $CLUSTER_NAMESPACE
 # reference https://cloud.ibm.com/docs/containers/cs_cluster.html#bx_registry_other
@@ -325,28 +324,23 @@ else
   echo ""
   echo "=========================================================="
   echo "installing istio"
-set -x
-#  routerCanonicalHostname=$(kubectl get -n openshift-ingress routes -o jsonpath='{.items[0].status.ingress[0].routerCanonicalHostname}')
-# todo: handle case when there's more than one secret. There isn't supposed to be more than one, but we don't want to be so brille.
-  #NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} --output json| jq '.[]| select(.Nlb.secretNamespace=="'"${CLUSTER_NAMESPACE}"'")| .Nlb.nlbSubdomain'|sed 's/"//g')
-  
-  ISTIO_NAMESPACE=istio-system
+
   NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} |grep ${ISTIO_NAMESPACE}|awk '{print $1}')
   echo "NLB: $NLB"
-  #NLB_SECRET=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME}|grep ${ISTIO_NAMESPACE} | awk '{print $4}')
+
+  # todo: handle case when there's more than one secret. There isn't supposed to be more than one, but we don't want to be so brille.
   NLB_SECRET=$(kubectl get secret -n ${ISTIO_NAMESPACE} -o jsonpath="{.items[?(@.type=='kubernetes.io/tls')].metadata.name}")
   echo "NLB_SECRET: $NLB_SECRET"
-  # todo: we need to get the port from values.yaml
-  echo "Values path: ${CHART_PATH}/values.yaml"
+
   PORT=$(grep 'servicePort' ${CHART_PATH}/values.yaml|cut -d':' -f2|tr -d " \t\n\r")
   echo "PORT: $PORT"
-  #PORT=3000
 
 # todo: we should not delete these, but rather update.
-
 kubectl delete --ignore-not-found=true gateway ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
 kubectl delete --ignore-not-found=true virtualservice ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
 
+# todo: move this to Chart
+# We didn't do it through Chart because it requires the NLB
   kubectl apply -n "${CLUSTER_NAMESPACE}" -f - <<EOF
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
