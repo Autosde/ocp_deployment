@@ -33,7 +33,7 @@ echo "Use for custom Kubernetes cluster target:"
 echo "KUBERNETES_MASTER_ADDRESS=${KUBERNETES_MASTER_ADDRESS}"
 echo "KUBERNETES_MASTER_PORT=${KUBERNETES_MASTER_PORT}"
 echo "KUBERNETES_SERVICE_ACCOUNT_TOKEN=${KUBERNETES_SERVICE_ACCOUNT_TOKEN}"
-echo "NLB=${NLB}" # todo: instead of getting NLB from env, use imbcloud command.
+#echo "NLB=${NLB}" # todo: instead of getting NLB from env, use imbcloud command.
 echo "APP_ENV=${APP_ENV}"
 
 # View build properties
@@ -328,12 +328,15 @@ else
 set -x
 #  routerCanonicalHostname=$(kubectl get -n openshift-ingress routes -o jsonpath='{.items[0].status.ingress[0].routerCanonicalHostname}')
 # todo: handle case when there's more than one secret. There isn't supposed to be more than one, but we don't want to be so brille.
-  NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} --output json| jq '.[]| select(.Nlb.secretNamespace=="'"${CLUSTER_NAMESPACE}"'")| .Nlb.nlbSubdomain'|sed 's/"//g')
-  #NLB_SECRET=$(kubectl get secret -n ${CLUSTER_NAMESPACE} -o jsonpath="{.items[?(@.type=='kubernetes.io/tls')].metadata.name}")
-  #NLB=$(ibmcloud ks nlb-dns ls -c satellite-is-interim-eu-de-iks|grep istio-system|awk '{print $1}')
-  NLB_SECRET=$(ibmcloud ks nlb-dns ls -c satellite-is-interim-eu-de-iks|grep istio-system|awk '{print $4}')
+  #NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} --output json| jq '.[]| select(.Nlb.secretNamespace=="'"${CLUSTER_NAMESPACE}"'")| .Nlb.nlbSubdomain'|sed 's/"//g')
+  
+  ISTIO_NAMESPACE=istio-system
+  NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} |grep ${ISTIO_NAMESPACE} | awk '{print $1}')
+  #NLB_SECRET=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME}|grep ${ISTIO_NAMESPACE} | awk '{print $4}')
+  NLB_SECRET=$(kubectl get secret -n ${ISTIO_NAMESPACE} -o jsonpath="{.items[?(@.type=='kubernetes.io/tls')].metadata.name}")
   # todo: we need to get the port from values.yaml
-#  PORT=$( grep 'servicePort' ${CHART_PATH}/values.yaml || : )
+  PORT2=$( grep 'servicePort' ${CHART_PATH}/values.yaml || : )
+  echo "PORT2: $PORT2"
   PORT=3000
 
 # todo: we should not delete these, but rather update.
