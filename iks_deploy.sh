@@ -346,8 +346,9 @@ spec:
     mode: STRICT
 EOF
 # todo: we should not delete these, but rather update.
-kubectl delete --ignore-not-found=true gateway ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
-kubectl delete --ignore-not-found=true virtualservice ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
+
+#kubectl delete --ignore-not-found=true gateway ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
+#kubectl delete --ignore-not-found=true virtualservice ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
 
 # todo: move this to Chart
 # We didn't do it through Chart because it requires the NLB
