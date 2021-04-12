@@ -334,7 +334,17 @@ else
 
   PORT=$(grep 'servicePort' ${CHART_PATH}/values.yaml|cut -d':' -f2|tr -d " \t\n\r")
   echo "PORT: $PORT"
-
+  
+  #Lock down mutual TLS for the entire mesh
+  kubectl apply -n istio-system -f - <<EOF
+apiVersion: "security.istio.io/v1beta1"
+kind: "PeerAuthentication"
+metadata:
+  name: "default"
+spec:
+  mtls:
+    mode: STRICT
+EOF
 # todo: we should not delete these, but rather update.
 kubectl delete --ignore-not-found=true gateway ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
 kubectl delete --ignore-not-found=true virtualservice ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
