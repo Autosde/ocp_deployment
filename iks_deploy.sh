@@ -325,7 +325,7 @@ else
   echo ""
   echo "=========================================================="
   echo "installing istio"
-
+set -x
 #  routerCanonicalHostname=$(kubectl get -n openshift-ingress routes -o jsonpath='{.items[0].status.ingress[0].routerCanonicalHostname}')
 # todo: handle case when there's more than one secret. There isn't supposed to be more than one, but we don't want to be so brille.
   NLB=$(ibmcloud ks nlb-dns ls -c ${CLUSTER_ID} --output json| jq '.[]| select(.Nlb.secretNamespace=="'"${CLUSTER_NAMESPACE}"'")| .Nlb.nlbSubdomain'|sed 's/"//g')
@@ -336,6 +336,7 @@ else
   PORT=3000
 
 # todo: we should not delete these, but rather update.
+
 kubectl delete --ignore-not-found=true gateway ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
 kubectl delete --ignore-not-found=true virtualservice ${CHART_NAME} -n "${CLUSTER_NAMESPACE}"
 
