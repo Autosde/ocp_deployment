@@ -331,9 +331,11 @@ set -x
   #NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} --output json| jq '.[]| select(.Nlb.secretNamespace=="'"${CLUSTER_NAMESPACE}"'")| .Nlb.nlbSubdomain'|sed 's/"//g')
   
   ISTIO_NAMESPACE=istio-system
-  NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} |grep ${ISTIO_NAMESPACE} | awk '{print $1}')
+  NLB=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME} |grep ${ISTIO_NAMESPACE}|awk '{print $1}')
+  echo "NLB: $NLB"
   #NLB_SECRET=$(ibmcloud ks nlb-dns ls -c ${PIPELINE_KUBERNETES_CLUSTER_NAME}|grep ${ISTIO_NAMESPACE} | awk '{print $4}')
   NLB_SECRET=$(kubectl get secret -n ${ISTIO_NAMESPACE} -o jsonpath="{.items[?(@.type=='kubernetes.io/tls')].metadata.name}")
+  echo "NLB_SECRET: $NLB_SECRET"
   # todo: we need to get the port from values.yaml
   PORT2=$( grep 'servicePort' ${CHART_PATH}/values.yaml || : )
   echo "PORT2: $PORT2"
