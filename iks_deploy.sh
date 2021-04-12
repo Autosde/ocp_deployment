@@ -337,6 +337,7 @@ set -x
   NLB_SECRET=$(kubectl get secret -n ${ISTIO_NAMESPACE} -o jsonpath="{.items[?(@.type=='kubernetes.io/tls')].metadata.name}")
   echo "NLB_SECRET: $NLB_SECRET"
   # todo: we need to get the port from values.yaml
+  echo "Values path: ${CHART_PATH}/values.yaml"
   PORT=$(grep 'servicePort' ${CHART_PATH}/values.yaml|cut -d':' -f2|tr -d " \t\n\r")
   echo "PORT: $PORT"
   #PORT=3000
